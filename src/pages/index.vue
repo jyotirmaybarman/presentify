@@ -6,13 +6,33 @@
 
                     <p class="text-center py-4">Slides</p>
 
-                    <div class="drag-container flex justify-center flex-col items-center gap-4"
-                        @dragover.prevent="onDragOver" @dragenter.prevent>
+                    <div class="drag-container flex justify-center flex-col items-center">
 
-                        <Slide class="draggable relative" :class="dragging == index ? 'dragging' : ''"
-                            v-for="(slide, index) in slides" :key="index" @after="addSlide('after', index)"
-                            @before="addSlide('before', index)" @delete="deleteSlide(index)" :slide="slide" draggable="true"
-                            @dragstart="startDrag($event, index)" @dragend="endDrag($event, index)" />
+                        <draggable 
+                            v-model="slides" 
+                            group="people"
+                            class="flex flex-col gap-4"
+                            item-key="id"
+                            @end="onDragEnd"
+                            @start="onDragStart"
+                        >
+                            <template #item="{element:slide, index}">
+                                <div>
+                                    <Slide class="draggable border relative"
+                                        @click="selected = index"
+                                        :class="{
+                                            'bg-gray-100 border-blue-500': selected == index,
+                                        }"
+                                        @after="addSlide('after', index)"
+                                        @before="addSlide('before', index)" 
+                                        @delete="deleteSlide(index)" 
+                                        :slide="slide.content" 
+                                    />
+
+                                </div>
+                            </template>
+                        </draggable>
+
 
                     </div>
 
@@ -76,6 +96,7 @@
 </template>
 
 <script setup lang="ts">
+import draggable from 'vuedraggable'
 import {
     ContextMenuRoot,
     ContextMenuContent,
@@ -96,108 +117,57 @@ import {
 import { ref } from 'vue';
 import Slide from '@/components/Slide.vue';
 
-// props & emits
+// props & emitsarea-down
 
 // variables
-const slides = ref<number[]>([1, 2, 3])
-const dragging = ref<number>(-1)
+const slides = ref([
+    {
+        id: 1,
+        content: "slide 1"
+    },
+    {
+        id: 2,
+        content: "slide 2"
+    },
+    {
+        id: 3,
+        content: "slide 3"
+    },
+])
+const selected = ref<number|null>(null)
 
 // computed & watchers
 
 // functions
-// function handleSelect(e: Event){
-//     console.log(e);
-
-// }
 
 function addSlide(position: "bottom" | "after" | "before" = "bottom", index: number = -1) {
-    console.log(index);
-
-
     if (position == 'after') {
         console.log(position);
-        slides.value.splice(index + 1, 0, slides.value.length + 1);
+        slides.value.splice(index + 1, 0, { content: "slide " + (slides.value.length + 1), id: slides.value.length + 1 });
 
     }
 
     if (position == 'before') {
         console.log(position);
-        slides.value.splice(index, 0, slides.value.length + 1);
+        slides.value.splice(index, 0, { content: "slide " + (slides.value.length + 1), id: slides.value.length + 1 });
 
     }
 
     if (position == 'bottom') {
-        slides.value.push(slides.value.length + 1);
+        slides.value.push({ content: "slide " + (slides.value.length + 1), id: slides.value.length + 1 });
     }
-
-
 }
 
 function deleteSlide(index: number) {
     slides.value.splice(index, 1)
 }
 
-function startDrag(event: DragEvent, index: number) {
-    dragging.value = index
-
-
-    if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = "move";
-        event.dataTransfer.effectAllowed = "move"
-        event.dataTransfer.setData('index', index.toString());
-    }
-
-
+function onDragStart(event:any){
+    selected.value = event.oldIndex
 }
 
-function endDrag(event: DragEvent, index: number) {
-    dragging.value = -1
-
-    console.log(event);
-    console.log(index);
-
-}
-
-// function onDrop(event: DragEvent) {
-//     if (event.dataTransfer) {
-//         // const idx = event.dataTransfer.getData('index')
-//         // const item = slides.value.find((_, index) => index.toString() == idx)
-
-//     }
-// }
-
-function onDragOver(event: DragEvent) {
-    const afterElement = getDragAfterElement(event.clientY)
-    const draggable = document.querySelector('.dragging')
-    const container = document.querySelector('.drag-container');
-
-    if (container && draggable) {
-        if (afterElement == null) {
-            container.appendChild(draggable)
-        } else {
-            container.insertBefore(draggable, afterElement)
-        }
-
-    }
-
-
-}
-
-function getDragAfterElement(y: number) {
-    const draggableElements = [...document.querySelectorAll('.draggable:not(.dragging)')]
-
-    const obj = draggableElements.reduce<{ offset: number, element?: HTMLElement }>((closest: any, child) => {
-        const box = child.getBoundingClientRect()
-        const offset = y - box.top - box.height / 2
-        if (offset < 0 && offset > closest.offset) {
-            return { offset: offset, element: child }
-        } else {
-            return closest
-        }
-
-    }, { offset: Number.NEGATIVE_INFINITY, element: undefined })
-
-    return obj.element;
+function onDragEnd(event:any){
+    selected.value = event.newIndex
 }
 
 // lifecycles
@@ -208,5 +178,29 @@ function getDragAfterElement(y: number) {
 <style lang="postcss" scoped>
 .dragging {
     @apply bg-gray-100
+}
+
+.area-top,
+.area-down{
+    position: relative;
+}
+.area-top::before{
+    position: absolute;
+    content: "";
+    width: 100%;
+    margin-bottom: 15px;
+    top: -6px;
+    left: 0;
+    border: 1px solid blue;
+}
+
+.area-down::after{
+    position: absolute;
+    content: "";
+    width: 100%;
+    margin-bottom: 15px;
+    left: 0;
+    bottom: -20px;
+    border: 1px solid blue;
 }
 </style>
